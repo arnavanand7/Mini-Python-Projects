@@ -1,34 +1,108 @@
-import cv2
-
-def nothing():
-    pass
-
-cap = cv2.VideoCapture(0)
-
-cv2.namedWindow('Sketch')
-cv2.createTrackbar('L','Sketch',0,255,nothing)
-cv2.createTrackbar('H','Sketch',0,255,nothing)
+import cv2 as cv
+import numpy as np
+from matplotlib import pyplot as plt
 
 
-while(True):
-    ret, img = cap.read()
+def sketch(image):
+    # Convert image to gray scale
+    img_gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
-    # flip and convert to grayscale
-    img = cv2.flip(img, 1)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Clean up image using Gaussian Blur
+    img_gray_blur = cv.GaussianBlur(img_gray, (5, 5), 0)
 
-    # update the constants for detecting edge using the trackbar values
-    L = cv2.getTrackbarPos('L','Sketch')
-    H = cv2.getTrackbarPos('H','Sketch')
+    # Extract Edges
+    canny_edges = cv.Canny(img_gray_blur, 30, 70)
 
-    # detect edges
-    i2 = cv2.Canny(gray, L, H)
-    ret2,i2 = cv2.threshold(i2, 50, 255,cv2.THRESH_BINARY_INV)
-    cv2.imshow("original",img)
-    cv2.imshow("Sketch",i2)
-    
-    if cv2.waitKey(1)== ord('q'):
-        break
+    # Do an invert binarize the image
+    ret, mask = cv.threshold(canny_edges, 120, 255, cv.THRESH_BINARY_INV)
 
-cap.release()
-cv2.destroyAllWindows()
+    return mask
+
+
+def liveSketch():
+    cap = cv.VideoCapture(0)
+
+    while True:
+        ret, frame = cap.read()
+        cv.imshow("Live Sketch", sketch(frame))
+        if cv.waitKey(1) == 27:
+            break
+
+    cap.release()
+    cv.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    liveSketch()
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+import cv2 as cv
+import numpy as np
+from matplotlib import pyplot as plt
+ 
+ 
+def sketch(image):
+    # Convert image to gray scale
+    img_gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+ 
+    # Clean up image using Gaussian Blur
+    img_gray_blur = cv.GaussianBlur(img_gray, (5, 5), 0)
+ 
+    # Extract Edges
+    canny_edges = cv.Canny(img_gray_blur, 30, 70)
+ 
+    # Do an invert binarize the image
+    ret, mask = cv.threshold(canny_edges, 120, 255, cv.THRESH_BINARY_INV)
+ 
+    return mask
+ 
+ 
+def liveSketch():
+    cap = cv.VideoCapture(0)
+ 
+    while True:
+        ret, frame = cap.read()
+        cv.imshow("Live Sketch", sketch(frame))
+        if cv.waitKey(1) == 27:
+            break
+ 
+    cap.release()
+    cv.destroyAllWindows()
+ 
+ 
+if __name__ == "__main__":
+    liveSketch()
