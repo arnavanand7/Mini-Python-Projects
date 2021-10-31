@@ -1,133 +1,65 @@
-import time
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from tkinter import *
-import tkinter.messagebox
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
+# Import required packages
+import cv2
+import pytesseract
 
+# Mention the installed location of Tesseract-OCR in your system
+pytesseract.pytesseract.tesseract_cmd = 'System_path_to_tesseract.exe'
 
-class analysis_text():
+# Read image from which text needs to be extracted
+img = cv2.imread("sample.jpg")
 
-	# Main function in program
-	def center(self, toplevel):
+# Preprocessing the image starts
 
-		toplevel.update_idletasks()
-		w = toplevel.winfo_screenwidth()
-		h = toplevel.winfo_screenheight()
-		size = tuple(int(_) for _ in
-					toplevel.geometry().split('+')[0].split('x'))
+# Convert the image to gray scale
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-		x = w/2 - size[0]/2
-		y = h/2 - size[1]/2
-		toplevel.geometry("%dx%d+%d+%d" % (size + (x, y)))
+# Performing OTSU threshold
+ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
 
-	def callback(self):
-		if tkinter.messagebox.askokcancel("Quit",
-										"Do you want to leave?"):
-			self.main.destroy()
+# Specify structure shape and kernel size.
+# Kernel size increases or decreases the area
+# of the rectangle to be detected.
+# A smaller value like (10, 10) will detect
+# each word instead of a sentence.
+rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
 
-	def setResult(self, type, res):
+# Applying dilation on the threshold image
+dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
 
-		#calculated comments in vader analysis
-		if (type == "neg"):
-			self.negativeLabel.configure(text =
-										"You typed a negative comment : "
-										+ str(res) + " % \n")
-		elif (type == "neu"):
-			self.neutralLabel.configure( text =
-										"You typed a neutral comment : "
-										+ str(res) + " % \n")
-		elif (type == "pos"):
-			self.positiveLabel.configure(text
-										= "You typed a positive comment: "
-										+ str(res) + " % \n")
+# Finding contours
+contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL,
+												cv2.CHAIN_APPROX_NONE)
 
+# Creating a copy of image
+im2 = img.copy()
 
-	def runAnalysis(self):
+# A text file is created and flushed
+file = open("recognized.txt", "w+")
+file.write("")
+file.close()
 
-		sentences = []
-		sentences.append(self.line.get())
-		sid = SentimentIntensityAnalyzer()
-
-		for sentence in sentences:
-
-			# print(sentence)
-			ss = sid.polarity_scores(sentence)
-
-			if ss['compound'] >= 0.05 :
-				self.normalLabel.configure(text =
-										" You typed a postive statement! ")
-
-			elif ss['compound'] <= - 0.05 :
-				self.normalLabel.configure(text =
-										" You typed a negative statement!")
-
-			else :
-				self.normalLabel.configure(text =
-										" You typed a normal statement! ")
-			for k in sorted(ss):
-				self.setResult(k, ss[k])
-		print()
-
-
-	def editedText(self, event):
-		self.typedText.configure(text = self.line.get() + event.char)
-
-
-	def runByEnter(self, event):
-		self.runAnalysis()
-
-
-	def __init__(self):
-		# Create main window
-		self.main = Tk()
-		self.main.title("Text Sentiment Detector System")
-		self.main.geometry("600x600")
-		self.main.resizable(width=TRUE, height=TRUE)
-		self.main.protocol("WM_DELETE_WINDOW", self.callback)
-		self.main.focus()
-		self.center(self.main)
-
-		# addition item on window
-		self.label1 = Label(text = "Enter your text here:")
-		self.label1.pack()
-
-		# Add a hidden button Enter
-		self.line = Entry(self.main, width=70)
-		self.line.pack()
-
-		self.textLabel = Label(text = "\n",
-							font=("Consolas", 15))
-		self.textLabel.pack()
-		self.typedText = Label(text = "",
-							fg = "blue",
-							font=("Consolas", 20))
-		self.typedText.pack()
-
-		self.line.bind("<Key>",self.editedText)
-		self.line.bind("<Return>",self.runByEnter)
-
-
-		self.result = Label(text = "\n",
-							font=("Consolas", 15))
-		self.result.pack()
-		self.negativeLabel = Label(text = "",
-								fg = "red",
-								font=("Consolas", 20))
-		self.negativeLabel.pack()
-		self.neutralLabel = Label(text = "",
-								font=("Consolas", 20))
-		self.neutralLabel.pack()
-		self.positiveLabel = Label(text = "",
-								fg = "green",
-								font=("Consolas", 20))
-		self.positiveLabel.pack()
-		self.normalLabel =Label (text ="",
-								fg ="red",
-								font=("Consolas", 20))
-		self.normalLabel.pack()
-
-# Driver code
-myanalysis = analysis_text()
-mainloop()
+# Looping through the identified contours
+# Then rectangular part is cropped and passed on
+# to pytesseract for extracting text from it
+# Extracted text is then written into the text file
+for cnt in contours:
+	x, y, w, h = cv2.boundingRect(cnt)
+	
+	# Drawing a rectangle on copied image
+	rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
+	
+	# Cropping the text block for giving input to OCR
+	cropped = im2[y:y + h, x:x + w]
+	
+	# Open the file in append mode
+	file = open("recognized.txt", "a")
+	
+	# Apply OCR on the cropped image
+	text = pytesseract.image_to_string(cropped)
+	
+	# Appending the text into file
+	file.write(text)
+	file.write("\n")
+	
+	# Close the file
+	file.close
